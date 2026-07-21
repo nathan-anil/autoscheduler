@@ -22,7 +22,7 @@ import FixedEventModal from "./components/FixedEventModal";
 import type { AppPage } from "./AppShell";
 import { useAppState } from "./context/AppStateContext";
 import { todayBlocks, weekPreview } from "./lib/schedule";
-import { formatTime12h } from "./lib/time";
+import { formatTimeRange } from "./lib/time";
 import type { BlockCategory } from "./types";
 
 const previewDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -244,9 +244,11 @@ export default function DashboardHome({ onNavigate }: Props) {
                       <Icon size={18} strokeWidth={2.2} />
                     </div>
                     <span className="today-time">
-                      {formatTime12h(item.start)}
+                      {formatTimeRange(item.start, item.end)}
                     </span>
-                    <span className="today-label">{item.label}</span>
+                    <span className="today-label" title={item.label}>
+                      {item.label}
+                    </span>
                   </div>
                 );
               })}

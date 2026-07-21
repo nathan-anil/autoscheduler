@@ -448,18 +448,21 @@ button {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
+  gap: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .today-row {
-  flex: 1;
-  min-height: 0;
-  max-height: clamp(32px, 5vh, 48px);
+  flex: 0 0 auto;
+  min-height: 40px;
   display: grid;
-  grid-template-columns: clamp(26px, 2.5vw, 34px) clamp(58px, 5.5vw, 76px) 1fr;
+  grid-template-columns: clamp(26px, 2.5vw, 34px) minmax(92px, 118px) minmax(0, 1fr);
   align-items: center;
+  column-gap: 8px;
   border-bottom: 1px solid var(--line);
   font-size: clamp(10px, 0.88vw, 12px);
+  padding: 4px 0;
 }
 
 .today-row:last-child {
@@ -473,6 +476,7 @@ button {
   color: #ffffff;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
 .today-icon.green {
@@ -497,14 +501,19 @@ button {
 
 .today-time {
   color: var(--muted);
-  padding-left: clamp(6px, 0.8vw, 10px);
   font-size: clamp(9px, 0.78vw, 11px);
+  white-space: nowrap;
+  line-height: 1.25;
 }
 
 .today-label {
   color: var(--ink);
   font-weight: 600;
   font-size: clamp(10px, 0.88vw, 12px);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .weekly-card {

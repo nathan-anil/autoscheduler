@@ -384,7 +384,9 @@ export function scheduleHealth(blocks: ScheduleBlock[]) {
 export function todayBlocks(blocks: ScheduleBlock[]) {
   const today = new Date().getDay();
   const day = today === 0 ? 6 : today - 1;
-  return blocks.filter((b) => b.day === day).sort((a, b) => a.start - b.start);
+  return blocks
+    .filter((b) => b.day === day && b.category !== "free")
+    .sort((a, b) => a.start - b.start);
 }
 
 export type PreviewCell = {
