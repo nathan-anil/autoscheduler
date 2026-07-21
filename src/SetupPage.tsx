@@ -72,8 +72,10 @@ export default function SetupPage({ onNavigate }: SetupPageProps) {
   }, [picked, setup.commitments]);
 
   function saveEvent(event: Omit<FixedEvent, "id"> & { id?: string }) {
-    if (event.id) updateFixedEvent(event as FixedEvent);
-    else addFixedEvent(event);
+    const result = event.id
+      ? updateFixedEvent(event as FixedEvent)
+      : addFixedEvent(event);
+    return result.ok ? null : result.error;
   }
 
   return (

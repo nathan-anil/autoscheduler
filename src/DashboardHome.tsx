@@ -27,22 +27,6 @@ import type { BlockCategory } from "./types";
 
 const previewDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const blockClass: Record<string, string> = {
-  Class: "class",
-  Study: "study",
-  Reading: "study",
-  Lunch: "meal",
-  Dinner: "meal",
-  Meal: "meal",
-  Gym: "gym",
-  Relaxation: "relaxation",
-  Hobbies: "reading",
-  "Social Time": "reading",
-  "Free Time": "free",
-  "Wake Up": "free",
-  Sleep: "free",
-};
-
 const icons: Record<BlockCategory, typeof BookOpen> = {
   fixed: BookOpen,
   study: BookOpen,
@@ -80,6 +64,7 @@ export default function DashboardHome({ onNavigate }: Props) {
     generateSchedule,
     addFixedEvent,
     setSetupStep,
+    clearScheduleWarnings,
   } = useAppState();
   const [showEventModal, setShowEventModal] = useState(false);
   const [confirmRebuild, setConfirmRebuild] = useState(false);
@@ -158,7 +143,10 @@ export default function DashboardHome({ onNavigate }: Props) {
 
       {confirmRebuild && (
         <div className="dashboard-regenerate-confirm card">
-          <p>Rebuild from your current setup? Block edits get wiped.</p>
+          <p>
+            Rebuild from your current setup? This replaces the calendar,
+            including any block edits you made.
+          </p>
           <div className="dashboard-regenerate-actions">
             <button
               type="button"
@@ -178,6 +166,31 @@ export default function DashboardHome({ onNavigate }: Props) {
             >
               <RefreshCcw size={16} />
               Rebuild
+            </button>
+          </div>
+        </div>
+      )}
+
+      {(schedule.warnings?.length ?? 0) > 0 && (
+        <div className="dashboard-regenerate-confirm card">
+          <p>
+            <strong>Schedule warnings:</strong>{" "}
+            {schedule.warnings.join(" ")}
+          </p>
+          <div className="dashboard-regenerate-actions">
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={clearScheduleWarnings}
+            >
+              Dismiss
+            </button>
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={() => onNavigate("weekly-schedule")}
+            >
+              View schedule
             </button>
           </div>
         </div>
@@ -258,10 +271,11 @@ export default function DashboardHome({ onNavigate }: Props) {
                   <div className="time-label">{row.time}</div>
                   {row.cells.map((cell, i) => (
                     <div
-                      className={`week-block ${blockClass[cell] ?? "free"}`}
+                      className={`week-block ${cell.category}`}
                       key={`${row.time}-${i}`}
+                      title={cell.label}
                     >
-                      {cell}
+                      {cell.label}
                     </div>
                   ))}
                 </Fragment>
@@ -381,8 +395,10 @@ export default function DashboardHome({ onNavigate }: Props) {
         <FixedEventModal
           onClose={() => setShowEventModal(false)}
           onSave={(event) => {
-            addFixedEvent(event);
+            const result = addFixedEvent(event);
+            if (!result.ok) return result.error;
             setShowEventModal(false);
+            return null;
           }}
         />
       )}

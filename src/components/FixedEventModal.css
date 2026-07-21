@@ -138,3 +138,14 @@
   background: var(--blue, #2563eb);
   color: #fff;
 }
+
+.fixed-event-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  font-weight: 600;
+}

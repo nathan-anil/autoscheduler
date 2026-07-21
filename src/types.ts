@@ -35,6 +35,8 @@ export type ScheduleBlock = {
   end: number;
   label: string;
   category: BlockCategory;
+  /** Set when the user edits a block in the schedule editor. */
+  manual?: boolean;
 };
 
 export type SetupState = {
@@ -54,9 +56,13 @@ export type AppState = {
   schedule: {
     blocks: ScheduleBlock[];
     lastGeneratedAt: string | null;
+    /** Warnings from the most recent generate/rebuild (skipped activities, etc.). */
+    warnings: string[];
   };
   ui: {
     setupStep: 1 | 2 | 3;
     weekOffset: number;
+    /** Current app page, persisted so refresh restores the view. */
+    page?: "dashboard" | "setup" | "weekly-schedule";
   };
 };

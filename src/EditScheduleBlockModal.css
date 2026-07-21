@@ -332,3 +332,14 @@
 .edit-block-save:hover {
   background: #1d4ed8;
 }
+
+.edit-block-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 600;
+}

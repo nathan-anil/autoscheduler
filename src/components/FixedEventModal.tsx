@@ -14,7 +14,7 @@ import "./FixedEventModal.css";
 type Props = {
   event?: FixedEvent | null;
   onClose: () => void;
-  onSave: (event: Omit<FixedEvent, "id"> & { id?: string }) => void;
+  onSave: (event: Omit<FixedEvent, "id"> & { id?: string }) => string | null;
 };
 
 export default function FixedEventModal({ event, onClose, onSave }: Props) {
@@ -24,15 +24,39 @@ export default function FixedEventModal({ event, onClose, onSave }: Props) {
     formatTime12h(event?.start ?? 120),
   );
   const [endTime, setEndTime] = useState(formatTime12h(event?.end ?? 210));
+  const [error, setError] = useState<string | null>(null);
+
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+  const previewValid =
+    startMinutes !== null && endMinutes !== null && endMinutes > startMinutes;
 
   function handleSave() {
-    onSave({
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+
+    if (start === null || end === null) {
+      setError("Choose valid start and end times.");
+      return;
+    }
+    if (end <= start) {
+      setError("End time must be after start time.");
+      return;
+    }
+
+    const saveError = onSave({
       id: event?.id,
       label: label.trim() || "Event",
       day,
-      start: timeToMinutes(startTime),
-      end: timeToMinutes(endTime),
+      start,
+      end,
     });
+
+    if (saveError) {
+      setError(saveError);
+      return;
+    }
+
     onClose();
   }
 
@@ -93,7 +117,10 @@ export default function FixedEventModal({ event, onClose, onSave }: Props) {
                 <Clock3 size={15} />
                 <select
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => {
+                    setStartTime(e.target.value);
+                    setError(null);
+                  }}
                 >
                   {timeOptions.map((time) => (
                     <option key={`start-${time}`} value={time}>
@@ -111,7 +138,10 @@ export default function FixedEventModal({ event, onClose, onSave }: Props) {
                 <Clock3 size={15} />
                 <select
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={(e) => {
+                    setEndTime(e.target.value);
+                    setError(null);
+                  }}
                 >
                   {timeOptions.map((time) => (
                     <option key={`end-${time}`} value={time}>
@@ -123,15 +153,15 @@ export default function FixedEventModal({ event, onClose, onSave }: Props) {
               </div>
             </label>
           </div>
+
+          {error && <p className="fixed-event-error">{error}</p>}
         </div>
 
         <div className="fixed-event-preview">
           <strong>
-            {formatPreviewRange(
-              day,
-              timeToMinutes(startTime),
-              timeToMinutes(endTime),
-            )}
+            {previewValid
+              ? formatPreviewRange(day, startMinutes, endMinutes)
+              : "Invalid time range"}
           </strong>
           <p>{label.trim() || "Event"}</p>
         </div>

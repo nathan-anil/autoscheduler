@@ -55,7 +55,9 @@ export default function LoginPage({ onLogin }: Props) {
           </button>
         </form>
 
-        <p className="login-note">Anything works — it&apos;s a demo.</p>
+        <p className="login-note">
+          Demo only — any password works. Not secure for real accounts.
+        </p>
       </div>
     </div>
   );

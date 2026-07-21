@@ -14,6 +14,7 @@ import { scheduleHealth } from "./lib/schedule";
 import {
   blockPosition,
   days,
+  formatDayHeader,
   formatTimeRange,
   formatWeekRange,
   hourLabels,
@@ -41,13 +42,15 @@ export default function WeeklySchedulePage({ onNavigate }: Props) {
     deleteBlock,
     setWeekOffset,
     setSetupStep,
+    clearScheduleWarnings,
   } = useAppState();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmRebuild, setConfirmRebuild] = useState(false);
-  const [toast, setToast] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const { setup, schedule, ui } = state;
   const blocks = schedule.blocks;
+  const warnings = schedule.warnings ?? [];
 
   const editing = useMemo(
     () => blocks.find((b) => b.id === editingId) ?? null,
@@ -60,8 +63,8 @@ export default function WeeklySchedulePage({ onNavigate }: Props) {
     setEditingId(null);
     generateSchedule();
     setConfirmRebuild(false);
-    setToast(true);
-    setTimeout(() => setToast(false), 2000);
+    setToast("Schedule rebuilt from setup. Previous block edits were replaced.");
+    setTimeout(() => setToast(null), 3200);
   }
 
   function editInputs() {
@@ -84,7 +87,10 @@ export default function WeeklySchedulePage({ onNavigate }: Props) {
                 <>
                   {confirmRebuild ? (
                     <div className="regenerate-confirm">
-                      <span>Rebuild schedule?</span>
+                      <span>
+                        Rebuild from setup? This replaces the calendar,
+                        including any block edits you made.
+                      </span>
                       <button
                         type="button"
                         className="secondary-btn"
@@ -98,7 +104,7 @@ export default function WeeklySchedulePage({ onNavigate }: Props) {
                         onClick={rebuild}
                       >
                         <RefreshCcw size={16} />
-                        Yeah
+                        Rebuild
                       </button>
                     </div>
                   ) : (
@@ -124,7 +130,25 @@ export default function WeeklySchedulePage({ onNavigate }: Props) {
             </div>
           </header>
 
-          {toast && <div className="toast">Done.</div>}
+          {toast && <div className="toast">{toast}</div>}
+
+          {warnings.length > 0 && (
+            <div className="schedule-warnings" role="status">
+              <strong>Some items could not be fully scheduled</strong>
+              <ul>
+                {warnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="schedule-warnings-dismiss"
+                onClick={clearScheduleWarnings}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
 
           {!blocks.length ? (
             <section className="card weekly-empty-card">
@@ -164,13 +188,16 @@ export default function WeeklySchedulePage({ onNavigate }: Props) {
                   Today
                 </button>
               </div>
+              <p className="week-nav-note">
+                Recurring weekly template — dates update with the week selector.
+              </p>
 
               <div className="weekly-calendar">
                 <div className="weekly-calendar-head">
                   <div className="weekly-calendar-corner" />
-                  {days.map((day) => (
-                    <div className="weekly-day-head" key={day}>
-                      {day}
+                  {days.map((_, dayIndex) => (
+                    <div className="weekly-day-head" key={dayIndex}>
+                      {formatDayHeader(dayIndex, ui.weekOffset)}
                     </div>
                   ))}
                 </div>
@@ -271,8 +298,10 @@ export default function WeeklySchedulePage({ onNavigate }: Props) {
           block={editing}
           onClose={() => setEditingId(null)}
           onSave={(updated) => {
-            updateBlock(updated);
+            const result = updateBlock(updated);
+            if (!result.ok) return result.error;
             setEditingId(null);
+            return null;
           }}
           onDelete={(id) => {
             deleteBlock(id);

@@ -34,7 +34,7 @@ export type EditableBlock = {
 type EditScheduleBlockModalProps = {
   block: EditableBlock;
   onClose: () => void;
-  onSave: (block: EditableBlock) => void;
+  onSave: (block: EditableBlock) => string | null;
   onDelete: (id: string) => void;
 };
 
@@ -61,18 +61,42 @@ export default function EditScheduleBlockModal({
   const [day, setDay] = useState(block.day);
   const [startTime, setStartTime] = useState(formatTime12h(block.start));
   const [endTime, setEndTime] = useState(formatTime12h(block.end));
+  const [error, setError] = useState<string | null>(null);
 
   const PreviewIcon = categoryIcons[block.category];
   const typeLabel = blockTypeLabel(block.category);
 
+  const startMinutes = timeToMinutes(startTime);
+  const endMinutes = timeToMinutes(endTime);
+  const previewValid =
+    startMinutes !== null && endMinutes !== null && endMinutes > startMinutes;
+
   function handleSave() {
-    onSave({
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+
+    if (start === null || end === null) {
+      setError("Choose valid start and end times.");
+      return;
+    }
+    if (end <= start) {
+      setError("End time must be after start time.");
+      return;
+    }
+
+    const saveError = onSave({
       ...block,
       label: title.trim() || block.label,
       day,
-      start: timeToMinutes(startTime),
-      end: timeToMinutes(endTime),
+      start,
+      end,
     });
+
+    if (saveError) {
+      setError(saveError);
+      return;
+    }
+
     onClose();
   }
 
@@ -140,7 +164,10 @@ export default function EditScheduleBlockModal({
                 <Clock3 size={15} />
                 <select
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => {
+                    setStartTime(e.target.value);
+                    setError(null);
+                  }}
                 >
                   {timeOptions.map((time) => (
                     <option key={`start-${time}`} value={time}>
@@ -158,7 +185,10 @@ export default function EditScheduleBlockModal({
                 <Clock3 size={15} />
                 <select
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={(e) => {
+                    setEndTime(e.target.value);
+                    setError(null);
+                  }}
                 >
                   {timeOptions.map((time) => (
                     <option key={`end-${time}`} value={time}>
@@ -170,6 +200,8 @@ export default function EditScheduleBlockModal({
               </div>
             </label>
           </div>
+
+          {error && <p className="edit-block-error">{error}</p>}
         </div>
 
         <div className="edit-block-preview">
@@ -181,11 +213,9 @@ export default function EditScheduleBlockModal({
             <div className="edit-block-preview-content">
               <strong>{title.trim() || block.label}</strong>
               <span>
-                {formatPreviewRange(
-                  day,
-                  timeToMinutes(startTime),
-                  timeToMinutes(endTime),
-                )}
+                {previewValid
+                  ? formatPreviewRange(day, startMinutes, endMinutes)
+                  : "Invalid time range"}
               </span>
               <span className="edit-block-type-badge small">
                 <CalendarDays size={11} />

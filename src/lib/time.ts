@@ -62,13 +62,17 @@ export function formatPreviewRange(day: number, start: number, end: number) {
   return `${dayNames[day]}, ${formatTime12h(start)} – ${formatTime12h(end)}`;
 }
 
-export function timeToMinutes(time: string) {
+/** Parse a 12h time like "9:00 AM" into minutes after 7:00 AM. Returns null if invalid. */
+export function timeToMinutes(time: string): number | null {
   const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return 0;
+  if (!match) return null;
 
   let hour = Number.parseInt(match[1], 10);
   const minute = Number.parseInt(match[2], 10);
   const period = match[3].toUpperCase();
+
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  if (hour < 1 || hour > 12 || minute < 0 || minute > 59) return null;
 
   if (period === "PM" && hour !== 12) hour += 12;
   if (period === "AM" && hour === 12) hour = 0;
@@ -86,13 +90,18 @@ export function blockPosition(start: number, end: number) {
   };
 }
 
-export function formatWeekRange(weekOffset: number) {
+export function mondayOfWeek(weekOffset: number) {
   const now = new Date();
   const monday = new Date(now);
   const day = now.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   monday.setDate(now.getDate() + diff + weekOffset * 7);
+  monday.setHours(0, 0, 0, 0);
+  return monday;
+}
 
+export function formatWeekRange(weekOffset: number) {
+  const monday = mondayOfWeek(weekOffset);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
@@ -101,4 +110,12 @@ export function formatWeekRange(weekOffset: number) {
 
   if (weekOffset === 0) return "This week";
   return `${fmt(monday)} – ${fmt(sunday)}`;
+}
+
+/** Day header label with calendar date for the selected week offset. */
+export function formatDayHeader(dayIndex: number, weekOffset: number) {
+  const date = new Date(mondayOfWeek(weekOffset));
+  date.setDate(date.getDate() + dayIndex);
+  const dayNum = date.getDate();
+  return `${days[dayIndex]} ${dayNum}`;
 }

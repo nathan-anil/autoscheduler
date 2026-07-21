@@ -6,7 +6,12 @@ import {
   type ReactNode,
 } from "react";
 
-import { buildSchedule, setupChecklist } from "../lib/schedule";
+import {
+  blocksClash,
+  buildSchedule,
+  fixedEventWakeSleepError,
+  setupChecklist,
+} from "../lib/schedule";
 import { useStoredState } from "../storage";
 import type {
   ActivityId,
@@ -16,6 +21,10 @@ import type {
   ScheduleBlock,
   SetupState,
 } from "../types";
+
+type MutationResult = { ok: true } | { ok: false; error: string };
+
+type AppPage = NonNullable<AppState["ui"]["page"]>;
 
 type AppStore = {
   state: AppState;
@@ -28,14 +37,16 @@ type AppStore = {
     field: keyof Commitment,
     value: string,
   ) => void;
-  addFixedEvent: (event: Omit<FixedEvent, "id">) => void;
-  updateFixedEvent: (event: FixedEvent) => void;
+  addFixedEvent: (event: Omit<FixedEvent, "id">) => MutationResult;
+  updateFixedEvent: (event: FixedEvent) => MutationResult;
   deleteFixedEvent: (id: string) => void;
   generateSchedule: () => void;
-  updateBlock: (block: ScheduleBlock) => void;
+  updateBlock: (block: ScheduleBlock) => MutationResult;
   deleteBlock: (id: string) => void;
   setSetupStep: (step: 1 | 2 | 3) => void;
   setWeekOffset: (offset: number) => void;
+  setPage: (page: AppPage) => void;
+  clearScheduleWarnings: () => void;
   login: (username: string) => void;
   logout: () => void;
 };
@@ -104,29 +115,100 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [setState],
   );
 
-  const addFixedEvent = useCallback((event: Omit<FixedEvent, "id">) => {
-    setState((prev) => ({
-      ...prev,
-      setup: {
-        ...prev.setup,
-        fixedEvents: [
-          ...prev.setup.fixedEvents,
-          { ...event, id: crypto.randomUUID() },
-        ],
-      },
-    }));
+  const addFixedEvent = useCallback((event: Omit<FixedEvent, "id">): MutationResult => {
+    if (event.end <= event.start) {
+      return { ok: false, error: "End time must be after start time." };
+    }
+
+    let result: MutationResult = { ok: true };
+
+    setState((prev) => {
+      const wakeSleepError = fixedEventWakeSleepError(
+        event,
+        prev.setup.wakeTime,
+        prev.setup.sleepTime,
+      );
+      if (wakeSleepError) {
+        result = { ok: false, error: wakeSleepError };
+        return prev;
+      }
+
+      const overlapsOther = prev.setup.fixedEvents.some(
+        (e) =>
+          e.day === event.day &&
+          e.start < event.end &&
+          event.start < e.end,
+      );
+
+      if (overlapsOther) {
+        result = {
+          ok: false,
+          error: "This event overlaps another fixed event.",
+        };
+        return prev;
+      }
+
+      return {
+        ...prev,
+        setup: {
+          ...prev.setup,
+          fixedEvents: [
+            ...prev.setup.fixedEvents,
+            { ...event, id: crypto.randomUUID() },
+          ],
+        },
+      };
+    });
+
+    return result;
   }, [setState]);
 
-  const updateFixedEvent = useCallback((event: FixedEvent) => {
-    setState((prev) => ({
-      ...prev,
-      setup: {
-        ...prev.setup,
-        fixedEvents: prev.setup.fixedEvents.map((e) =>
-          e.id === event.id ? event : e,
-        ),
-      },
-    }));
+  const updateFixedEvent = useCallback((event: FixedEvent): MutationResult => {
+    if (event.end <= event.start) {
+      return { ok: false, error: "End time must be after start time." };
+    }
+
+    let result: MutationResult = { ok: true };
+
+    setState((prev) => {
+      const wakeSleepError = fixedEventWakeSleepError(
+        event,
+        prev.setup.wakeTime,
+        prev.setup.sleepTime,
+      );
+      if (wakeSleepError) {
+        result = { ok: false, error: wakeSleepError };
+        return prev;
+      }
+
+      const overlapsOther = prev.setup.fixedEvents.some(
+        (e) =>
+          e.id !== event.id &&
+          e.day === event.day &&
+          e.start < event.end &&
+          event.start < e.end,
+      );
+
+      if (overlapsOther) {
+        result = {
+          ok: false,
+          error: "This event overlaps another fixed event.",
+        };
+        return prev;
+      }
+
+      return {
+        ...prev,
+        setup: {
+          ...prev.setup,
+          fixedEvents: prev.setup.fixedEvents.map((e) =>
+            e.id === event.id ? event : e,
+          ),
+        },
+      };
+    });
+
+    return result;
   }, [setState]);
 
   const deleteFixedEvent = useCallback((id: string) => {
@@ -140,25 +222,56 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   }, [setState]);
 
   const generateSchedule = useCallback(() => {
-    setState((prev) => ({
-      ...prev,
-      schedule: {
-        blocks: buildSchedule(prev.setup),
-        lastGeneratedAt: new Date().toISOString(),
-      },
-    }));
+    setState((prev) => {
+      const result = buildSchedule(prev.setup);
+
+      return {
+        ...prev,
+        schedule: {
+          blocks: result.blocks,
+          lastGeneratedAt: new Date().toISOString(),
+          warnings: result.warnings,
+        },
+      };
+    });
   }, [setState]);
 
-  const updateBlock = useCallback((block: ScheduleBlock) => {
-    setState((prev) => ({
-      ...prev,
-      schedule: {
-        ...prev.schedule,
-        blocks: prev.schedule.blocks.map((b) =>
-          b.id === block.id ? block : b,
-        ),
-      },
-    }));
+  const updateBlock = useCallback((block: ScheduleBlock): MutationResult => {
+    if (block.end <= block.start) {
+      return { ok: false, error: "End time must be after start time." };
+    }
+
+    let result: MutationResult = { ok: true };
+
+    setState((prev) => {
+      if (
+        blocksClash(
+          prev.schedule.blocks,
+          block.day,
+          block.start,
+          block.end,
+          block.id,
+        )
+      ) {
+        result = {
+          ok: false,
+          error: "This block overlaps another block on that day.",
+        };
+        return prev;
+      }
+
+      return {
+        ...prev,
+        schedule: {
+          ...prev.schedule,
+          blocks: prev.schedule.blocks.map((b) =>
+            b.id === block.id ? { ...block, manual: true } : b,
+          ),
+        },
+      };
+    });
+
+    return result;
   }, [setState]);
 
   const deleteBlock = useCallback((id: string) => {
@@ -182,6 +295,20 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({
       ...prev,
       ui: { ...prev.ui, weekOffset: offset },
+    }));
+  }, [setState]);
+
+  const setPage = useCallback((page: AppPage) => {
+    setState((prev) => ({
+      ...prev,
+      ui: { ...prev.ui, page },
+    }));
+  }, [setState]);
+
+  const clearScheduleWarnings = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      schedule: { ...prev.schedule, warnings: [] },
     }));
   }, [setState]);
 
@@ -215,6 +342,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       deleteBlock,
       setSetupStep,
       setWeekOffset,
+      setPage,
+      clearScheduleWarnings,
       login,
       logout,
     }),
@@ -233,6 +362,8 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       deleteBlock,
       setSetupStep,
       setWeekOffset,
+      setPage,
+      clearScheduleWarnings,
       login,
       logout,
     ],

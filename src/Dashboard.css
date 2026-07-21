@@ -524,9 +524,9 @@ button {
   width: 100%;
   display: grid;
   grid-template-columns: clamp(38px, 3.8vw, 50px) repeat(7, minmax(0, 1fr));
-  grid-template-rows: auto repeat(7, minmax(0, 1fr));
+  grid-template-rows: auto repeat(13, minmax(0, 1fr));
   column-gap: clamp(4px, 0.45vw, 6px);
-  row-gap: clamp(4px, 0.55vh, 6px);
+  row-gap: clamp(2px, 0.35vh, 4px);
   align-items: stretch;
 }
 
@@ -563,14 +563,17 @@ button {
   border-radius: 7px;
   display: grid;
   place-items: center;
-  font-size: clamp(9px, 0.82vw, 12px);
+  font-size: clamp(8px, 0.72vw, 11px);
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: clamp(2px, 0.3vh, 4px) clamp(3px, 0.35vw, 5px);
+  padding: clamp(1px, 0.2vh, 3px) clamp(2px, 0.3vw, 4px);
+  text-align: center;
+  line-height: 1.15;
 }
 
+.week-block.fixed,
 .week-block.class {
   background: #d8ebff;
   color: #1a4fbf;
@@ -586,11 +589,13 @@ button {
   color: #2d7a2a;
 }
 
+.week-block.fitness,
 .week-block.gym {
   background: #c7eee8;
   color: #1a7a72;
 }
 
+.week-block.relaxation,
 .week-block.reading {
   background: #ffedc8;
   color: #b45309;
